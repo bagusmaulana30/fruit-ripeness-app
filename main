@@ -1,0 +1,96 @@
+from skimage.feature import graycomatrix, graycoprops
+import numpy as np
+import cv2
+
+img = cv2.imread(
+    r"C:\Users\user\Downloads\fruit-ripeness-app\training\matang\matang1.jpg"
+)
+
+img = cv2.resize(img,(500,500))
+
+hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+
+lower = (15,30,30)
+upper = (90,255,255)
+
+mask = cv2.inRange(hsv,lower,upper)
+
+cv2.imshow("Original",img)
+cv2.imshow("HSV",hsv)
+cv2.imshow("Mask",mask)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+kernel = cv2.getStructuringElement(
+    cv2.MORPH_ELLIPSE,
+    (5,5)
+)
+
+mask_clean = cv2.morphologyEx(
+    mask,
+    cv2.MORPH_OPEN,
+    kernel
+)
+
+mask_clean = cv2.morphologyEx(
+    mask_clean,
+    cv2.MORPH_CLOSE,
+    kernel
+)
+cv2.imshow("Mask", mask)
+cv2.imshow("Mask Clean", mask_clean)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+result = cv2.bitwise_and(
+    img,
+    img,
+    mask=mask_clean
+)
+# Pisahkan channel HSV
+h, s, v = cv2.split(hsv)
+
+# Hitung rata-rata hanya pada area pisang
+mean_h = np.mean(h[mask_clean > 0])
+mean_s = np.mean(s[mask_clean > 0])
+mean_v = np.mean(v[mask_clean > 0])
+
+print("========================")
+print("FITUR WARNA")
+print("========================")
+print(f"Hue        : {mean_h:.2f}")
+print(f"Saturation : {mean_s:.2f}")
+print(f"Value      : {mean_v:.2f}")
+# Konversi hasil segmentasi menjadi grayscale
+gray = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+
+# Hitung GLCM
+glcm = graycomatrix(
+    gray,
+    distances=[1],
+    angles=[0],
+    levels=256,
+    symmetric=True,
+    normed=True
+)
+
+# Ambil fitur tekstur
+contrast = graycoprops(glcm, 'contrast')[0, 0]
+energy = graycoprops(glcm, 'energy')[0, 0]
+homogeneity = graycoprops(glcm, 'homogeneity')[0, 0]
+
+print("========================")
+print("FITUR TEKSTUR")
+print("========================")
+print(f"Contrast   : {contrast:.2f}")
+print(f"Energy     : {energy:.4f}")
+print(f"Homogeneity: {homogeneity:.4f}")
+
+cv2.imshow("Mask", mask)
+cv2.imshow("Mask Clean", mask_clean)
+cv2.imshow("Result", result)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
